@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-type ProcessNode = func(interface{}) interface{}
-
 type WorkItem interface {
 	Payload() interface{}
 	NodeId() int
@@ -32,22 +30,6 @@ type parChainProcessor struct {
 	dispatchChannel       chan WorkItem
 	shutdownChannel       chan struct{}
 	workerWaitGroup       *sync.WaitGroup
-}
-
-func NewChainProcessor(maxQueueLength int, nodes ...ProcessNode) Processor {
-	p := parChainProcessor{
-		processNodes:          nodes,
-		processNodesBufferMap: make(map[int]chan WorkItem),
-		dispatchChannel:       make(chan WorkItem, maxQueueLength),
-		shutdownChannel:       make(chan struct{}, runtime.NumCPU()),
-		workerWaitGroup:       new(sync.WaitGroup),
-	}
-
-	for i := range nodes {
-		p.processNodesBufferMap[i] = make(chan WorkItem, maxQueueLength)
-	}
-
-	return &p
 }
 
 func (p *parChainProcessor) Process(item interface{}) (ok bool) {
