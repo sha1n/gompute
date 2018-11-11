@@ -22,23 +22,28 @@ processingNode1 := func(in interface{}) interface{} {
 
 processingNodeN := func(in interface{}) interface{} {
 	...
-	someOutputChannel<- output 
+	someOutputChannel<- output // it's up to the caller to dispatch the result of the last processing node. 
 	return output
 }
 
 
-chainProcessor := NewChainProcessor(bufferSize,
+// bufferSize determines how many items can be enqueued before new items are rejected
+chainProcessor := NewChainProcessor(bufferSize, 
     processingNode1,
     ...
     processingNodeN)
 
+// the processor must be started before items can be submitted
 chainProcessor.Start()
+
+// the shutdown method will allow already submitted items to go through the entire chain.  
 defer chainProcessot.Shutdown()
 
 // Start parallel processing
-chainProcessor.Process(input1)
-chainProcessor.Process(input2)
+ok := chainProcessor.Process(input1) // you probably want to check the returned value, to make sure it's not rejected!
 ...
-chainProcessor.Process(inputN)
+ok = chainProcessor.Process(input2)
+...
+ok = chainProcessor.Process(inputN)
 
 ```
