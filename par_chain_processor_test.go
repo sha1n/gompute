@@ -22,6 +22,22 @@ func TestProcessMustCallAllNodesInOrder(t *testing.T) {
 	assert.Equal(t, 4, procOutput)
 }
 
+func TestProcessMustRejectItemsIfNotStarted(t *testing.T) {
+	chainProcessor := NewChainProcessor(10,
+		newNode(1))
+
+	assert.False(t, chainProcessor.Process(1))
+}
+
+func TestProcessMustRejectItemsAfterShutdown(t *testing.T) {
+	chainProcessor := NewChainProcessor(10,
+		newNode(1))
+
+	chainProcessor.Start()
+	chainProcessor.Shutdown()
+	assert.False(t, chainProcessor.Process(1))
+}
+
 func TestProcessMustRejectWhenProcessingQueuesAreFull(t *testing.T) {
 	chainProcessor := NewChainProcessor(1, newHeavyNode(newNode(1)))
 
