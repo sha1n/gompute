@@ -25,6 +25,8 @@ func (wi workItem) NodeId() int {
 }
 
 type parChainProcessor struct {
+	started               bool
+	mx                    *sync.RWMutex
 	processNodes          []ProcessNode
 	processNodesBufferMap map[int]chan WorkItem
 	dispatchChannel       chan WorkItem
@@ -33,13 +35,23 @@ type parChainProcessor struct {
 }
 
 func (p *parChainProcessor) Process(item interface{}) (ok bool) {
-	return p.dispatch(&workItem{
-		payload: item,
-		nodeId:  0,
-	})
+	if !p.isStarted() {
+		ok = false
+	} else {
+		ok = p.dispatch(&workItem{
+			payload: item,
+			nodeId:  0,
+		})
+	}
+
+	return ok
 }
 
 func (p *parChainProcessor) Start() {
+	if p.isStarted() {
+		return
+	}
+
 	// Start dispatcher routine
 	go p.dispatcher()()
 
@@ -50,15 +62,23 @@ func (p *parChainProcessor) Start() {
 		p.workerWaitGroup.Add(1)
 		workers -= 1
 	}
+
+	p.setStarted(true)
 }
 
 func (p *parChainProcessor) Shutdown() {
+	if !p.isStarted() {
+		return
+	}
+
 	p.shutdownChannel <- struct{}{}
 	p.workerWaitGroup.Wait()
 
 	close(p.dispatchChannel)
 	close(p.shutdownChannel)
 	p.closeWorkerChannels()
+
+	p.setStarted(false)
 }
 
 func (p *parChainProcessor) dispatch(workedItem WorkItem) (ok bool) {
@@ -155,4 +175,18 @@ func safeEnqueue(queue chan WorkItem, wi WorkItem) (ok bool) {
 
 	return ok && !rejected
 
+}
+
+func (p *parChainProcessor) isStarted() bool {
+	p.mx.RLock()
+	defer p.mx.RUnlock()
+
+	return p.started
+}
+
+func (p *parChainProcessor) setStarted(state bool) {
+	p.mx.Lock()
+	defer p.mx.Unlock()
+
+	p.started = state
 }
