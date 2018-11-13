@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/sha1n/compute.svg?branch=master)](https://travis-ci.org/sha1n/compute)
+[![Build Status](https://travis-ci.org/sha1n/gompute.svg?branch=master)](https://travis-ci.org/sha1n/gompute)
 
 # Gompute
 This repo provides a generic utility for high throughput parallel chain processing. 
