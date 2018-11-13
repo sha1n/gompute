@@ -1,10 +1,5 @@
 package gompute
 
-import (
-	"runtime"
-	"sync"
-)
-
 type Processor interface {
 	// Tries to submit an item for processing. Returns false if the processor cannot accept the item.
 	Process(item interface{}) (ok bool)
@@ -15,21 +10,3 @@ type Processor interface {
 }
 
 type ProcessNode = func(interface{}) interface{}
-
-func NewChainProcessor(maxQueueLength int, nodes ...ProcessNode) Processor {
-	p := parChainProcessor{
-		started:               false,
-		mx:                    new(sync.RWMutex),
-		processNodes:          nodes,
-		processNodesBufferMap: make(map[int]chan WorkItem),
-		dispatchChannel:       make(chan WorkItem, maxQueueLength),
-		shutdownChannel:       make(chan struct{}, runtime.NumCPU()),
-		workerWaitGroup:       new(sync.WaitGroup),
-	}
-
-	for i := range nodes {
-		p.processNodesBufferMap[i] = make(chan WorkItem, maxQueueLength)
-	}
-
-	return &p
-}

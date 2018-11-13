@@ -8,10 +8,11 @@ import (
 
 func TestProcessMustCallAllNodesInOrder(t *testing.T) {
 	out := make(chan interface{}, 0)
-	chainProcessor := NewChainProcessor(10,
-		newNode(1),
-		newNode(2),
-		newReportingNode(3, out))
+	chainProcessor, _ := NewChainProcessorBuilder().
+		WithMaxQueueLength(10).
+		AppendProcessNodes(newNode(1), newNode(2)).
+		AppendProcessNodes(newReportingNode(3, out)).
+		Build()
 
 	chainProcessor.Start()
 	defer chainProcessor.Shutdown()
@@ -23,15 +24,19 @@ func TestProcessMustCallAllNodesInOrder(t *testing.T) {
 }
 
 func TestProcessMustRejectItemsIfNotStarted(t *testing.T) {
-	chainProcessor := NewChainProcessor(10,
-		newNode(1))
+	chainProcessor, _ := NewChainProcessorBuilder().
+		WithMaxQueueLength(10).
+		AppendProcessNodes(newNode(1)).
+		Build()
 
 	assert.False(t, chainProcessor.Process(1))
 }
 
 func TestProcessMustRejectItemsAfterShutdown(t *testing.T) {
-	chainProcessor := NewChainProcessor(10,
-		newNode(1))
+	chainProcessor, _ := NewChainProcessorBuilder().
+		WithMaxQueueLength(10).
+		AppendProcessNodes(newNode(1)).
+		Build()
 
 	chainProcessor.Start()
 	chainProcessor.Shutdown()
@@ -39,7 +44,11 @@ func TestProcessMustRejectItemsAfterShutdown(t *testing.T) {
 }
 
 func TestProcessMustRejectWhenProcessingQueuesAreFull(t *testing.T) {
-	chainProcessor := NewChainProcessor(1, newHeavyNode(newNode(1)))
+	chainProcessor, _ := NewChainProcessorBuilder().
+		WithMaxWorkers(1).
+		WithMaxQueueLength(1).
+		AppendProcessNodes(newHeavyNode(newNode(1))).
+		Build()
 
 	chainProcessor.Start()
 	defer chainProcessor.Shutdown()
@@ -51,7 +60,10 @@ func TestProcessMustRejectWhenProcessingQueuesAreFull(t *testing.T) {
 
 func TestProcessMustProcessAllQueuedItemsBeforeShuttingDown(t *testing.T) {
 	out := make(chan interface{}, 3)
-	chainProcessor := NewChainProcessor(3, newHeavyNode(newReportingNode(1, out)))
+	chainProcessor, _ := NewChainProcessorBuilder().
+		WithMaxQueueLength(3).
+		AppendProcessNodes(newHeavyNode(newReportingNode(1, out))).
+		Build()
 
 	chainProcessor.Start()
 

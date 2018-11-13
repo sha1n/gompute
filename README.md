@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/sha1n/compute.svg?branch=master)](https://travis-ci.org/sha1n/compute)
 
-# Compute
+# Gompute
 This repo provides a generic utility for high throughput parallel chain processing. 
 Designed for cases where you need to pass many pieces of data through a chain of processing algorithms, while utilizing 
 all available CPU cores as much as possible. This implementation uses N-1 go routines to constantly execute processing 
@@ -27,11 +27,14 @@ processingNodeN := func(in interface{}) interface{} {
 }
 
 
-// bufferSize determines how many items can be enqueued before new items are rejected
-chainProcessor := NewChainProcessor(bufferSize, 
-    processingNode1,
-    ...
-    processingNodeN)
+// MaxQueueLength determines how many items can be enqueued before new items are rejected
+chainProcessor := NewChainProcessorBuilder().
+	WithMaxQueueLength(maxQueueLength).
+	WithMaxWorkers(runtime.NumCPU()). // optional: runtime.NumCPU() is the default
+	AppendProcessNodes(processingNode1, processingNode2).
+	AppendProcessNodes(...).
+	AppendProcessNodes(processingNodeN).
+	Build()
 
 // the processor must be started before items can be submitted
 chainProcessor.Start()
