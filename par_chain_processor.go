@@ -1,7 +1,7 @@
 package gompute
 
 import (
-	"runtime"
+	"log"
 	"sync"
 	"time"
 )
@@ -26,12 +26,42 @@ func (wi workItem) NodeId() int {
 
 type parChainProcessor struct {
 	started               bool
-	mx                    *sync.RWMutex
+	stateMutex            *sync.RWMutex
+	maxWorkers            int
 	processNodes          []ProcessNode
 	processNodesBufferMap map[int]chan WorkItem
 	dispatchChannel       chan WorkItem
 	shutdownChannel       chan struct{}
 	workerWaitGroup       *sync.WaitGroup
+}
+
+func NewChainProcessor(maxWorkers int, maxQueueLength int, nodes []ProcessNode) Processor {
+	if maxWorkers < 1 {
+		log.Panic("Max workers must be greater than zero and ideally greater than one.")
+	}
+	if maxQueueLength < 1 {
+		log.Panic("Max queue length must be greater than zero and high enough to allow smooth operation.")
+	}
+	if len(nodes) == 0 {
+		log.Panic("No processing nodes have been set.")
+	}
+
+	p := parChainProcessor{
+		started:               false,
+		stateMutex:            new(sync.RWMutex),
+		maxWorkers:            maxWorkers,
+		processNodes:          nodes,
+		processNodesBufferMap: make(map[int]chan WorkItem),
+		dispatchChannel:       make(chan WorkItem, len(nodes)*2),
+		shutdownChannel:       make(chan struct{}, maxWorkers),
+		workerWaitGroup:       new(sync.WaitGroup),
+	}
+
+	for i := range nodes {
+		p.processNodesBufferMap[i] = make(chan WorkItem, maxQueueLength)
+	}
+
+	return &p
 }
 
 func (p *parChainProcessor) Process(item interface{}) (ok bool) {
@@ -56,7 +86,7 @@ func (p *parChainProcessor) Start() {
 	go p.dispatcher()()
 
 	// Start worker routines
-	workers := runtime.NumCPU() - 1
+	workers := p.maxWorkers
 	for workers > 0 {
 		go p.worker()()
 		p.workerWaitGroup.Add(1)
@@ -178,15 +208,15 @@ func safeEnqueue(queue chan WorkItem, wi WorkItem) (ok bool) {
 }
 
 func (p *parChainProcessor) isStarted() bool {
-	p.mx.RLock()
-	defer p.mx.RUnlock()
+	p.stateMutex.RLock()
+	defer p.stateMutex.RUnlock()
 
 	return p.started
 }
 
 func (p *parChainProcessor) setStarted(state bool) {
-	p.mx.Lock()
-	defer p.mx.Unlock()
+	p.stateMutex.Lock()
+	defer p.stateMutex.Unlock()
 
 	p.started = state
 }
