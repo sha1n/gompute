@@ -13,7 +13,7 @@ endef
 default: get lint format test
 
 get:
-	go get -t ./...
+	go mod tidy
 
 test:
 	$(call print_title, Running tests...)
