@@ -1,35 +1,23 @@
-NOCOL=\x1b[0m
-GREEN=\x1b[32;01m
-RED=\x1b[31;01m
-YELLOW=\x1b[33;01m
-
-define print_title
-	@echo "---"
-	@echo "--- $(GREEN)$1$(NOCOL)"
-	@echo "---"
-endef
+GOBASE := $(shell pwd)
+GOPATH := $(GOBASE)/vendor:$(GOBASE)
+GOFILES := $(shell find . -type f -name '*.go' -not -path './vendor/*')
 
 
-default: get lint format test
+default: go-get go-format go-lint go-test
 
-get:
-	go mod tidy
+go-get:
+	@echo "  >  Fetching deps..."
+	@GOPATH=$(GOPATH) go mod tidy
 
-test:
-	$(call print_title, Running tests...)
+go-test:
+	@echo "  >  Running tests..."
 	go test -v `go list ./...`
 
 
-prepare:
-	$(call print_title,Preparing go dependencies...)
-	dep ensure -v
+go-lint:
+	@echo "  >  Linting source files..."
+	gofmt -d $(GOFILES)
 
-
-format:
-	$(call print_title,Formatting go sources...)
-	gofmt -s -w .
-
-
-lint:
-	$(call print_title,Lint...)
-	gofmt -d .
+go-format:
+	@echo "  >  Formating source files..."
+	gofmt -s -w $(GOFILES)
