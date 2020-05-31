@@ -52,7 +52,7 @@ func NewChainProcessor(maxWorkers int, maxQueueLength int, nodes []ProcessNode) 
 		maxWorkers:            maxWorkers,
 		processNodes:          nodes,
 		processNodesBufferMap: make(map[int]chan WorkItem),
-		dispatchChannel:       make(chan WorkItem, len(nodes)*2),
+		dispatchChannel:       make(chan WorkItem, maxQueueLength),
 		shutdownChannel:       make(chan struct{}, maxWorkers),
 		workerWaitGroup:       new(sync.WaitGroup),
 	}
